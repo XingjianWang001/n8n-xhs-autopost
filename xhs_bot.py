@@ -13,7 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -97,7 +97,7 @@ def resolve_image_path(task: dict[str, Any]) -> Path:
 def save_screenshot(page: Page) -> None:
     try:
         SCREENSHOT_DIR.mkdir(exist_ok=True)
-        path = SCREENSHOT_DIR / f"error-{time.strftime('%Y%m%d-%H%M%S')}.png"
+        path = SCREENSHOT_DIR / f"error-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.png"
         page.screenshot(path=str(path), full_page=True)
         log("INFO", f"Screenshot saved to {path}")
     except PlaywrightError as e:
