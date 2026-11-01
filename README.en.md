@@ -30,7 +30,7 @@ flowchart LR
     K --> L[Build task file]
     L --> M[xhs_bot.py publish]
     M --> N[Mark Done]
-    E & F & G & I & J & K & M -.on error.-> X[Mark Failed + write Error]
+    D & E & F & G & I & J & K & L & M -.on error.-> X[Mark Failed + write Error]
 ```
 
 ## Project layout
@@ -170,7 +170,7 @@ Exit code is `0` only if every task was published; otherwise `1`, and a screensh
 Read the `Error` field, fix the cause, and set the status back to `To Do` to retry.
 
 **The row is stuck at `Generating`**
-The run stopped before error handling could run (for example n8n was shut down, or writing to Notion itself failed). Check n8n's Executions list, then set the status back to `To Do`.
+The run stopped before error handling could run (for example n8n was shut down, or writing to Notion itself failed). Check n8n's Executions list. If Publish succeeded and only Mark Done kept failing after its retries, the note is already live: set the status to `Done`. Otherwise set it back to `To Do`; this avoids a duplicate post.
 
 **Error says `Success message not detected`**
 The publish button was clicked but the success toast never appeared. **Check the creator center first** to avoid a duplicate post before retrying.

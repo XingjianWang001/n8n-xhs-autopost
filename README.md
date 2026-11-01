@@ -32,7 +32,7 @@ flowchart LR
     K --> L[生成任务文件]
     L --> M[xhs_bot.py 发布]
     M --> N[标记 Done]
-    E & F & G & I & J & K & M -.出错.-> X[标记 Failed + 写入 Error]
+    D & E & F & G & I & J & K & L & M -.出错.-> X[标记 Failed + 写入 Error]
 ```
 
 ## 项目结构
@@ -174,7 +174,7 @@ python xhs_bot.py --mode publish_from_file --file examples/task.example.json
 查看 `Error` 字段中的原因，处理后把状态改回 `To Do`，下次运行会重新处理。
 
 **状态一直停在 `Generating`**
-说明 workflow 在出错处理之前就中断了（例如 n8n 被关闭，或者回写 Notion 本身失败）。到 n8n 的 Executions 里查看具体原因，然后把状态改回 `To Do`。
+说明 workflow 在出错处理之前就中断了（例如 n8n 被关闭，或者回写 Notion 本身失败）。到 n8n 的 Executions 里查看具体原因。如果 Publish 已经成功、只是 Mark Done 重试后仍然失败，笔记其实已经发出，把状态直接改成 `Done`；否则改回 `To Do`，以免重复发帖。
 
 **Error 显示 `Success message not detected`**
 点了发布按钮，但没有检测到「发布成功」提示。**先去创作者中心确认是否已经发出**，再决定要不要重试，以免重复发帖。
