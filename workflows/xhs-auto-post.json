@@ -1,0 +1,739 @@
+{
+  "name": "XHS Auto Post",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Setup / 配置\n\n1. Fill in the **Config** node (paths, Notion database ID, persona, image provider).\n   导入后先填写 **Config** 节点。\n2. Select your credentials in every **Notion** node and both **Gemini** nodes.\n   在所有 Notion 节点和两个 Gemini 节点里选择你的凭据。\n3. Run `python xhs_bot.py --mode login` once to save the Xiaohongshu session.\n   先运行一次扫码登录。\n\nFailed runs set the Notion row to **Failed** and write the reason to **Error**.\n失败时 Notion 状态会变为 Failed，原因写在 Error 字段。",
+        "height": 300,
+        "width": 520,
+        "color": 4
+      },
+      "id": "7733312c-a4ae-43dc-8a08-856a794c850d",
+      "name": "Setup Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "88afdca2-738c-479b-ad80-9f95e01983c4",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0ba282d2-e3c6-446b-82c3-144dcb1b0b8d",
+              "name": "BOT_DIR",
+              "value": "C:/path/to/n8n-xhs-autopost",
+              "type": "string"
+            },
+            {
+              "id": "59f5d0d3-9b8a-47ae-9ae6-0716bfae3630",
+              "name": "PYTHON",
+              "value": "python",
+              "type": "string"
+            },
+            {
+              "id": "a3d8feeb-e580-44fe-8ae8-b9b2dd93a3e1",
+              "name": "HEADLESS",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "7d524d85-6159-4b0c-9941-aea341bbae01",
+              "name": "NOTION_DATABASE_ID",
+              "value": "your-notion-database-id",
+              "type": "string"
+            },
+            {
+              "id": "59c3e6cf-9107-41db-bdb9-940b7fc5410b",
+              "name": "PERSONA",
+              "value": "一个喜欢分享生活小技巧的普通上班族",
+              "type": "string"
+            },
+            {
+              "id": "d3b51e6b-508b-43e9-8ea5-5526f0213345",
+              "name": "IMAGE_STYLE",
+              "value": "soft pastel flat illustration, clean background, high quality",
+              "type": "string"
+            },
+            {
+              "id": "c20c4fbd-5f79-407e-b433-544664c30d3c",
+              "name": "IMAGE_PROVIDER",
+              "value": "gemini",
+              "type": "string"
+            },
+            {
+              "id": "ce5a68b5-8a5a-459f-9beb-25caacc49efa",
+              "name": "POLLINATIONS_KEY",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "9b5940df-37c8-44e9-ab33-1d29fa03fa75",
+              "name": "GEMINI_TEXT_MODEL",
+              "value": "gemini-3.5-flash-lite",
+              "type": "string"
+            },
+            {
+              "id": "92ea5fe0-0adc-49a5-9854-e88a782854a6",
+              "name": "GEMINI_IMAGE_MODEL",
+              "value": "gemini-3.1-flash-lite-image",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f132e25f-a47d-4d53-b69c-5951b3922eea",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "={{ $('Config').first().json.NOTION_DATABASE_ID }}",
+          "mode": "id"
+        },
+        "limit": 1,
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Status|status",
+              "condition": "equals",
+              "statusValue": "To Do"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b845444f-c5a4-4c8d-a23b-9344b79b0c73",
+      "name": "Get To-Do Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Get To-Do Page').first().json.id }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|status",
+              "statusValue": "Generating"
+            },
+            {
+              "key": "Error|rich_text",
+              "textContent": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "49e69c1d-2771-4ee0-aeb7-91c31297df00",
+      "name": "Mark Generating",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "={{ 'models/' + $('Config').first().json.GEMINI_TEXT_MODEL.replace(/^models\\//, '') }}",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=你是一位经验丰富的小红书博主。你的人设：{{ $('Config').first().json.PERSONA }}\n\n请根据下面的主题和风格，写一篇自然、有吸引力、不说教的小红书笔记。\n\n主题：{{ $('Get To-Do Page').first().json.property_topic }}\n风格：{{ $('Get To-Do Page').first().json.property_style }}\n\n【通用写作原则】\n1. 不说教：分享视角和体验，而不是教育读者；不要生硬地要求点赞、评论或关注\n2. 视觉减负：段落短，信息密度适中，适当穿插 Emoji\n3. 口语化：像和朋友聊天一样，避免堆砌术语\n\n【按风格调整结构】\nA. 科普/知识：第一段抛出一个反直觉的结论或常见误区；第二段用直白的话解释原因\nB. 提问/互动：第一段描述一个有画面感的具体场景，让读者产生\"这就是我\"的共鸣；第二段抛出一个容易回答的二选一问题\nC. 干货/技巧：第一段展示问题解决后的结果；第二段给出 1-2 个简单、可执行的步骤\nD. 其他/默认：第一段写一句有意思的观察；第二段展开这个观察，引发共鸣\n\n【输出格式】\n只输出一个 JSON 对象，不要 markdown 代码块，不要任何解释：\n{\n  \"title\": \"标题，20 字以内，可带 Emoji，与风格匹配（科普用悬念，互动用提问，干货用结果导向）\",\n  \"content\": \"正文，两段，不包含标题和标签\",\n  \"tags\": \"3-5 个话题标签，格式如：#标签1 #标签2 #标签3\",\n  \"image_prompt\": \"An English prompt for a cover image about the topic. Visual style: {{ $('Config').first().json.IMAGE_STYLE }}. Vertical 3:4 composition, no text in the image.\"\n}"
+            }
+          ]
+        },
+        "simplify": false,
+        "options": {}
+      },
+      "id": "3c931812-913c-45f3-8bb4-1f2cb70b67d0",
+      "name": "Generate Copy",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the Gemini response into { title, content, tags, image_prompt }\n// and build the image URLs used by the pollinations branch / Notion.\nconst cfg = $('Config').first().json;\nconst res = $input.first().json;\n\n// Works with both simplified and raw Gemini node output.\nconst parts = res.candidates?.[0]?.content?.parts ?? res.content?.parts ?? [];\nconst rawText =\n  parts.filter((p) => p.text && !p.thought).map((p) => p.text).join('\\n') ||\n  res.output ||\n  res.text ||\n  '';\n\nif (!rawText) {\n  throw new Error('Gemini returned an empty response');\n}\n\nfunction tryParse(text) {\n  try {\n    return JSON.parse(text);\n  } catch {\n    return null;\n  }\n}\n\nconst cleaned = rawText.replace(/```(?:json)?/g, '').trim();\nlet data = tryParse(cleaned);\nif (!data) {\n  // Fall back to the outermost {...} block in the text.\n  const start = cleaned.indexOf('{');\n  const end = cleaned.lastIndexOf('}');\n  if (start !== -1 && end > start) data = tryParse(cleaned.slice(start, end + 1));\n}\n\nif (!data || !data.title || !data.content) {\n  throw new Error(`Could not parse title/content from model output: ${rawText.slice(0, 500)}`);\n}\n\nconst imagePrompt = data.image_prompt || `${data.title}, ${cfg.IMAGE_STYLE}`;\nconst encoded = encodeURIComponent(imagePrompt);\nconst query = 'width=1080&height=1440&nologo=true';\n\n// Public URL (no key) is what gets written to Notion.\nconst publicUrl = `https://image.pollinations.ai/prompt/${encoded}?${query}`;\nconst fetchUrl = cfg.POLLINATIONS_KEY\n  ? `https://gen.pollinations.ai/image/${encoded}?${query}&key=${encodeURIComponent(cfg.POLLINATIONS_KEY)}`\n  : publicUrl;\n\nconst provider = String(cfg.IMAGE_PROVIDER || 'gemini').toLowerCase();\n\nreturn {\n  json: {\n    title: String(data.title).trim(),\n    content: String(data.content).trim(),\n    tags: String(data.tags || '').trim(),\n    image_prompt: imagePrompt,\n    image_provider: provider,\n    image_fetch_url: fetchUrl,\n    image_url: provider === 'pollinations' ? publicUrl : '(generated by Gemini)',\n  },\n};\n"
+      },
+      "id": "738efdfc-6a0e-4738-b7e8-7ab8a7d70d63",
+      "name": "Parse Copy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Get To-Do Page').first().json.id }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Title|rich_text",
+              "textContent": "={{ $('Parse Copy').first().json.title }}"
+            },
+            {
+              "key": "Content|rich_text",
+              "textContent": "={{ $('Parse Copy').first().json.content }}"
+            },
+            {
+              "key": "Tags|rich_text",
+              "textContent": "={{ $('Parse Copy').first().json.tags }}"
+            },
+            {
+              "key": "Image URL|url",
+              "urlValue": "={{ $('Parse Copy').first().json.image_url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9932ffb5-c31a-4b92-8d29-8845da87e8d2",
+      "name": "Save Copy to Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1320,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "09ed2564-9e84-48ae-88ae-3f4c38985623",
+                    "leftValue": "={{ $('Parse Copy').first().json.image_provider }}",
+                    "rightValue": "pollinations",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pollinations"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "gemini"
+        }
+      },
+      "id": "3dff2470-e8de-4447-ae81-82469eecff29",
+      "name": "Image Provider",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Parse Copy').first().json.image_fetch_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "a0d6d347-6a76-43d4-98e2-0ff9b84d3b4e",
+      "name": "Pollinations Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -120
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "generate",
+        "modelId": {
+          "__rl": true,
+          "value": "={{ 'models/' + $('Config').first().json.GEMINI_IMAGE_MODEL.replace(/^models\\//, '') }}",
+          "mode": "id"
+        },
+        "prompt": "={{ $('Parse Copy').first().json.image_prompt }}",
+        "options": {
+          "binaryPropertyOutput": "data"
+        }
+      },
+      "id": "a7a540fe-9d35-4256-902c-486d0d019cf5",
+      "name": "Gemini Image",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        120
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Config').first().json.BOT_DIR }}/downloads/temp.jpg",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "83aea7cd-549e-4f9d-b027-f3566b738a1c",
+      "name": "Save Image",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the task file consumed by xhs_bot.py.\nconst cfg = $('Config').first().json;\nconst copy = $('Parse Copy').first().json;\n\nreturn {\n  json: {\n    title: copy.title,\n    content: copy.content,\n    tags: copy.tags,\n    image_path: `${cfg.BOT_DIR}/downloads/temp.jpg`,\n  },\n};\n"
+      },
+      "id": "5ff9578f-6e06-4122-8571-ef7a494df9b9",
+      "name": "Build Task",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "xhs_task.json"
+        }
+      },
+      "id": "0349bb7d-8273-46c5-a6dc-9fc99096cf08",
+      "name": "Convert to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Config').first().json.BOT_DIR }}/xhs_task.json",
+        "options": {
+          "append": false
+        }
+      },
+      "id": "623f24e4-3f2b-44ba-9555-3259b6201d39",
+      "name": "Save Task",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2660,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "command": "={{ $('Config').first().json.PYTHON }} \"{{ $('Config').first().json.BOT_DIR }}/xhs_bot.py\" --mode publish_from_file --file \"{{ $('Config').first().json.BOT_DIR }}/xhs_task.json\"{{ $('Config').first().json.HEADLESS ? ' --headless' : '' }}"
+      },
+      "id": "1804d80c-0594-4444-9e36-fcb541208d50",
+      "name": "Publish",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Get To-Do Page').first().json.id }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|status",
+              "statusValue": "Done"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "32326fca-7055-408a-a118-24ed8609c7d5",
+      "name": "Mark Done",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        3100,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Get To-Do Page').first().json.id }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|status",
+              "statusValue": "Failed"
+            },
+            {
+              "key": "Error|rich_text",
+              "textContent": "={{ String($json.error?.message ?? $json.error ?? $json.stderr ?? 'Unknown error').slice(0, 1900) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2c3033a7-fb30-44a0-9496-40e6456f6ac0",
+      "name": "Mark Failed",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        3100,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Get To-Do Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get To-Do Page": {
+      "main": [
+        [
+          {
+            "node": "Mark Generating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Generating": {
+      "main": [
+        [
+          {
+            "node": "Generate Copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Copy": {
+      "main": [
+        [
+          {
+            "node": "Parse Copy",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Copy": {
+      "main": [
+        [
+          {
+            "node": "Save Copy to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Copy to Notion": {
+      "main": [
+        [
+          {
+            "node": "Image Provider",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Provider": {
+      "main": [
+        [
+          {
+            "node": "Pollinations Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pollinations Image": {
+      "main": [
+        [
+          {
+            "node": "Save Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Image": {
+      "main": [
+        [
+          {
+            "node": "Save Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Image": {
+      "main": [
+        [
+          {
+            "node": "Build Task",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Task": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Save Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Task": {
+      "main": [
+        [
+          {
+            "node": "Publish",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish": {
+      "main": [
+        [
+          {
+            "node": "Mark Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
