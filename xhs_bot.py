@@ -94,6 +94,17 @@ def resolve_image_path(task: dict[str, Any]) -> Path:
     return path if path.is_absolute() else SCRIPT_DIR / path
 
 
+def cleanup_paths(task_file: Path, tasks: list[dict[str, Any]]) -> list[Path]:
+    """Files --cleanup may delete: only what the workflow wrote, never a user's own files."""
+    paths = [task_file] if task_file.name.startswith("xhs_task_") else []
+    downloads = SCREENSHOT_DIR.resolve()
+    for task in tasks:
+        image = resolve_image_path(task).resolve()
+        if image.is_relative_to(downloads):
+            paths.append(image)
+    return paths
+
+
 def save_screenshot(page: Page) -> None:
     try:
         SCREENSHOT_DIR.mkdir(exist_ok=True)
@@ -244,7 +255,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     code = publish_all(tasks, args.state, args.headless)
     if code == 0 and args.cleanup:
-        for path in [args.file, *(resolve_image_path(t) for t in tasks)]:
+        for path in cleanup_paths(args.file, tasks):
             try:
                 path.unlink(missing_ok=True)
             except OSError as e:
