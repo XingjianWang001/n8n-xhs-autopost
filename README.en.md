@@ -24,7 +24,7 @@ flowchart LR
     F --> G[Save copy to Notion]
     G --> H{Image provider}
     H -->|gemini| I[Gemini: generate image]
-    H -->|pollinations| J[Pollinations: download image]
+    H -->|pollinations / pollinations-key| J[Pollinations: download image]
     I --> K[Save image]
     J --> K
     K --> L[Build task file]
@@ -107,7 +107,7 @@ Restart n8n after changing them.
 
 1. In n8n, **Import from File** → `workflows/xhs-auto-post.json`
 2. Open the **Config** node and fill in the fields below
-3. Select your **Notion API** credential in every Notion node and your **Google Gemini(PaLM) API** credential in both Gemini nodes
+3. Select your **Notion API** credential in every Notion node and your **Google Gemini(PaLM) API** credential in both Gemini nodes (for a Pollinations key, see [Pollinations key](#pollinations-key-optional) below)
 4. Add a row with `Status = To Do` in Notion and click **Execute Workflow** for a test run
 5. Activate the workflow once it works (runs hourly by default; change it in Schedule Trigger)
 
@@ -121,10 +121,19 @@ Restart n8n after changing them.
 | `NOTION_DATABASE_ID` | — | Your Notion database ID |
 | `PERSONA` | 一个喜欢分享生活小技巧的普通上班族 | Account persona, injected into the prompt |
 | `IMAGE_STYLE` | soft pastel flat illustration… | Cover image style |
-| `IMAGE_PROVIDER` | `gemini` | `gemini` or `pollinations` |
-| `POLLINATIONS_KEY` | empty | Optional. When set, uses `gen.pollinations.ai`; when empty, uses the legacy anonymous endpoint |
+| `IMAGE_PROVIDER` | `gemini` | `gemini`, `pollinations` (legacy anonymous endpoint `image.pollinations.ai`, no key) or `pollinations-key` (`gen.pollinations.ai`, needs a credential, see below) |
 | `GEMINI_TEXT_MODEL` | `gemini-3.5-flash-lite` | Copywriting model |
 | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-lite-image` | Image model (only used when `IMAGE_PROVIDER=gemini`) |
+
+### Pollinations key (optional)
+
+The key lives in an n8n credential, not in Config or the request URL:
+
+1. In n8n, create a **Header Auth** credential with Name `Authorization` and Value `Bearer sk_...` (note the space after `Bearer`)
+2. Select it in the **Pollinations Image (Key)** node
+3. Set `IMAGE_PROVIDER` in Config to `pollinations-key`
+
+Use a secret key starting with `sk_`; a publishable `pk_` key gets `401` (see the [Pollinations APIDOCS](https://github.com/pollinations/pollinations/blob/main/APIDOCS.md#-authentication)).
 
 ## Using the publisher on its own
 

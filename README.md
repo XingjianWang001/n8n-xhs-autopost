@@ -26,7 +26,7 @@ flowchart LR
     F --> G[回写文案到 Notion]
     G --> H{配图来源}
     H -->|gemini| I[Gemini 生成图片]
-    H -->|pollinations| J[Pollinations 下载图片]
+    H -->|pollinations / pollinations-key| J[Pollinations 下载图片]
     I --> K[保存图片]
     J --> K
     K --> L[生成任务文件]
@@ -109,7 +109,7 @@ N8N_RESTRICT_FILE_ACCESS_TO="C:/path/to/n8n-xhs-autopost"
 
 1. n8n 中 **Import from File**，选择 `workflows/xhs-auto-post.json`
 2. 打开 **Config** 节点，填写下表中的字段
-3. 在所有 Notion 节点中选择 **Notion API** 凭据，在两个 Gemini 节点中选择 **Google Gemini(PaLM) API** 凭据
+3. 在所有 Notion 节点中选择 **Notion API** 凭据，在两个 Gemini 节点中选择 **Google Gemini(PaLM) API** 凭据（使用 Pollinations key 时另见下方 [Pollinations key](#pollinations-key可选)）
 4. 在 Notion 中添加一条 `Status = To Do` 的记录，点击 **Execute Workflow** 手动试跑一次
 5. 确认无误后激活 workflow（默认每小时运行一次，可在 Schedule Trigger 中修改）
 
@@ -123,10 +123,19 @@ N8N_RESTRICT_FILE_ACCESS_TO="C:/path/to/n8n-xhs-autopost"
 | `NOTION_DATABASE_ID` | — | Notion 数据库 ID |
 | `PERSONA` | 一个喜欢分享生活小技巧的普通上班族 | 账号人设，会写进 prompt |
 | `IMAGE_STYLE` | soft pastel flat illustration… | 配图风格（英文效果更好） |
-| `IMAGE_PROVIDER` | `gemini` | `gemini` 或 `pollinations` |
-| `POLLINATIONS_KEY` | 空 | 可选。填写后使用 `gen.pollinations.ai`，留空使用旧的匿名接口 |
+| `IMAGE_PROVIDER` | `gemini` | `gemini`、`pollinations`（旧的匿名接口 `image.pollinations.ai`，无需 key）或 `pollinations-key`（`gen.pollinations.ai`，需要凭据，见下文） |
 | `GEMINI_TEXT_MODEL` | `gemini-3.5-flash-lite` | 文案模型 |
 | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-lite-image` | 配图模型（仅 `IMAGE_PROVIDER=gemini` 时使用） |
+
+### Pollinations key（可选）
+
+key 不写在 Config 或 URL 里，而是保存在 n8n 凭据中：
+
+1. 在 n8n 中新建一个 **Header Auth** 凭据：Name 填 `Authorization`，Value 填 `Bearer sk_...`（`Bearer` 后有一个空格）
+2. 在 **Pollinations Image (Key)** 节点中选择这个凭据
+3. 把 Config 中的 `IMAGE_PROVIDER` 改为 `pollinations-key`
+
+必须使用 `sk_` 开头的 secret key；`pk_` 开头的 publishable key 会返回 `401`（见 [Pollinations APIDOCS](https://github.com/pollinations/pollinations/blob/main/APIDOCS.md#-authentication)）。
 
 ## 单独使用发布脚本
 
