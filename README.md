@@ -118,7 +118,7 @@ N8N_RESTRICT_FILE_ACCESS_TO="C:/path/to/n8n-xhs-autopost"
 | 字段 | 默认值 | 说明 |
 |---|---|---|
 | `BOT_DIR` | `C:/path/to/n8n-xhs-autopost` | 本项目的绝对路径，用 `/` 分隔 |
-| `PYTHON` | `python` | Python 解释器命令或路径，例如 `.venv/Scripts/python` |
+| `PYTHON` | `python` | Python 解释器的**绝对路径**，例如 `C:/path/to/n8n-xhs-autopost/.venv/Scripts/python.exe`。相对路径以 n8n 进程的工作目录为基准，而不是 `BOT_DIR`；默认的 `python` 只有在 n8n 的 PATH 中能找到时才可用 |
 | `HEADLESS` | `false` | 是否无窗口运行浏览器。无头模式更容易被风控，建议先用 `false` |
 | `NOTION_DATABASE_ID` | — | Notion 数据库 ID |
 | `PERSONA` | 一个喜欢分享生活小技巧的普通上班族 | 账号人设，会写进 prompt |

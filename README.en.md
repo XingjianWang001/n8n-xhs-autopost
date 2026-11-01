@@ -116,7 +116,7 @@ Restart n8n after changing them.
 | Field | Default | Notes |
 |---|---|---|
 | `BOT_DIR` | `C:/path/to/n8n-xhs-autopost` | Absolute path to this project, using `/` |
-| `PYTHON` | `python` | Python command or path, e.g. `.venv/bin/python` |
+| `PYTHON` | `python` | **Absolute path** to the Python interpreter, e.g. `/path/to/n8n-xhs-autopost/.venv/bin/python`. Relative paths resolve from n8n's working directory, not `BOT_DIR`; the default `python` only works if it is on n8n's PATH |
 | `HEADLESS` | `false` | Run the browser without a window. Headless is more likely to trigger anti-bot checks |
 | `NOTION_DATABASE_ID` | — | Your Notion database ID |
 | `PERSONA` | 一个喜欢分享生活小技巧的普通上班族 | Account persona, injected into the prompt |

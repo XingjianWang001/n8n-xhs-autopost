@@ -424,7 +424,7 @@
     },
     {
       "parameters": {
-        "command": "={{ $('Config').first().json.PYTHON }} \"{{ $('Config').first().json.BOT_DIR }}/xhs_bot.py\" --mode publish_from_file --file \"{{ $('Save Task').first().json.fileName }}\" --cleanup{{ $('Config').first().json.HEADLESS ? ' --headless' : '' }}"
+        "command": "=\"{{ $('Config').first().json.PYTHON }}\" \"{{ $('Config').first().json.BOT_DIR }}/xhs_bot.py\" --mode publish_from_file --file \"{{ $('Save Task').first().json.fileName }}\" --cleanup{{ $('Config').first().json.HEADLESS ? ' --headless' : '' }}"
       },
       "id": "1804d80c-0594-4444-9e36-fcb541208d50",
       "name": "Publish",
