@@ -24,13 +24,13 @@ flowchart LR
     F --> G[Save copy to Notion]
     G --> H{Image provider}
     H -->|gemini| I[Gemini: generate image]
-    H -->|pollinations| J[Pollinations: download image]
+    H -->|pollinations / pollinations-key| J[Pollinations: download image]
     I --> K[Save image]
     J --> K
     K --> L[Build task file]
     L --> M[xhs_bot.py publish]
     M --> N[Mark Done]
-    E & F & G & I & J & K & M -.on error.-> X[Mark Failed + write Error]
+    D & E & F & G & I & J & K & L & M -.on error.-> X[Mark Failed + write Error]
 ```
 
 ## Project layout
@@ -107,7 +107,7 @@ Restart n8n after changing them.
 
 1. In n8n, **Import from File** → `workflows/xhs-auto-post.json`
 2. Open the **Config** node and fill in the fields below
-3. Select your **Notion API** credential in every Notion node and your **Google Gemini(PaLM) API** credential in both Gemini nodes
+3. Select your **Notion API** credential in every Notion node and your **Google Gemini(PaLM) API** credential in both Gemini nodes (for a Pollinations key, see [Pollinations key](#pollinations-key-optional) below)
 4. Add a row with `Status = To Do` in Notion and click **Execute Workflow** for a test run
 5. Activate the workflow once it works (runs hourly by default; change it in Schedule Trigger)
 
@@ -116,15 +116,24 @@ Restart n8n after changing them.
 | Field | Default | Notes |
 |---|---|---|
 | `BOT_DIR` | `C:/path/to/n8n-xhs-autopost` | Absolute path to this project, using `/` |
-| `PYTHON` | `python` | Python command or path, e.g. `.venv/bin/python` |
+| `PYTHON` | `python` | **Absolute path** to the Python interpreter, e.g. `/path/to/n8n-xhs-autopost/.venv/bin/python`. Relative paths resolve from n8n's working directory, not `BOT_DIR`; the default `python` only works if it is on n8n's PATH |
 | `HEADLESS` | `false` | Run the browser without a window. Headless is more likely to trigger anti-bot checks |
 | `NOTION_DATABASE_ID` | — | Your Notion database ID |
 | `PERSONA` | 一个喜欢分享生活小技巧的普通上班族 | Account persona, injected into the prompt |
 | `IMAGE_STYLE` | soft pastel flat illustration… | Cover image style |
-| `IMAGE_PROVIDER` | `gemini` | `gemini` or `pollinations` |
-| `POLLINATIONS_KEY` | empty | Optional. When set, uses `gen.pollinations.ai`; when empty, uses the legacy anonymous endpoint |
+| `IMAGE_PROVIDER` | `gemini` | `gemini`, `pollinations` (legacy anonymous endpoint `image.pollinations.ai`, no key) or `pollinations-key` (`gen.pollinations.ai`, needs a credential, see below) |
 | `GEMINI_TEXT_MODEL` | `gemini-3.5-flash-lite` | Copywriting model |
 | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-lite-image` | Image model (only used when `IMAGE_PROVIDER=gemini`) |
+
+### Pollinations key (optional)
+
+The key lives in an n8n credential, not in Config or the request URL:
+
+1. In n8n, create a **Header Auth** credential with Name `Authorization` and Value `Bearer sk_...` (note the space after `Bearer`)
+2. Select it in the **Pollinations Image (Key)** node
+3. Set `IMAGE_PROVIDER` in Config to `pollinations-key`
+
+Use a secret key starting with `sk_`; a publishable `pk_` key gets `401` (see the [Pollinations APIDOCS](https://github.com/pollinations/pollinations/blob/main/APIDOCS.md#-authentication)).
 
 ## Using the publisher on its own
 
@@ -151,6 +160,7 @@ A task file holds one object or an array of them (published in order):
 | `--mode publish_from_file --file <path>` | Publish from a task file |
 | `--state <path>` | Session file, defaults to `xhs_state.json` in the project root |
 | `--headless` | Run without a window (publish mode only) |
+| `--cleanup` | Delete the task file and its images once every task is published (the workflow passes this; files are kept on failure for debugging) |
 
 Exit code is `0` only if every task was published; otherwise `1`, and a screenshot is saved under `downloads/`.
 
@@ -160,7 +170,7 @@ Exit code is `0` only if every task was published; otherwise `1`, and a screensh
 Read the `Error` field, fix the cause, and set the status back to `To Do` to retry.
 
 **The row is stuck at `Generating`**
-The run stopped before error handling could run (for example n8n was shut down, or writing to Notion itself failed). Check n8n's Executions list, then set the status back to `To Do`.
+The run stopped before error handling could run (for example n8n was shut down, or writing to Notion itself failed). Check n8n's Executions list. If Publish succeeded and only Mark Done kept failing after its retries, the note is already live: set the status to `Done`. Otherwise set it back to `To Do`; this avoids a duplicate post.
 
 **Error says `Success message not detected`**
 The publish button was clicked but the success toast never appeared. **Check the creator center first** to avoid a duplicate post before retrying.

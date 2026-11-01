@@ -26,13 +26,13 @@ flowchart LR
     F --> G[回写文案到 Notion]
     G --> H{配图来源}
     H -->|gemini| I[Gemini 生成图片]
-    H -->|pollinations| J[Pollinations 下载图片]
+    H -->|pollinations / pollinations-key| J[Pollinations 下载图片]
     I --> K[保存图片]
     J --> K
     K --> L[生成任务文件]
     L --> M[xhs_bot.py 发布]
     M --> N[标记 Done]
-    E & F & G & I & J & K & M -.出错.-> X[标记 Failed + 写入 Error]
+    D & E & F & G & I & J & K & L & M -.出错.-> X[标记 Failed + 写入 Error]
 ```
 
 ## 项目结构
@@ -109,7 +109,7 @@ N8N_RESTRICT_FILE_ACCESS_TO="C:/path/to/n8n-xhs-autopost"
 
 1. n8n 中 **Import from File**，选择 `workflows/xhs-auto-post.json`
 2. 打开 **Config** 节点，填写下表中的字段
-3. 在所有 Notion 节点中选择 **Notion API** 凭据，在两个 Gemini 节点中选择 **Google Gemini(PaLM) API** 凭据
+3. 在所有 Notion 节点中选择 **Notion API** 凭据，在两个 Gemini 节点中选择 **Google Gemini(PaLM) API** 凭据（使用 Pollinations key 时另见下方 [Pollinations key](#pollinations-key可选)）
 4. 在 Notion 中添加一条 `Status = To Do` 的记录，点击 **Execute Workflow** 手动试跑一次
 5. 确认无误后激活 workflow（默认每小时运行一次，可在 Schedule Trigger 中修改）
 
@@ -118,15 +118,24 @@ N8N_RESTRICT_FILE_ACCESS_TO="C:/path/to/n8n-xhs-autopost"
 | 字段 | 默认值 | 说明 |
 |---|---|---|
 | `BOT_DIR` | `C:/path/to/n8n-xhs-autopost` | 本项目的绝对路径，用 `/` 分隔 |
-| `PYTHON` | `python` | Python 解释器命令或路径，例如 `.venv/Scripts/python` |
+| `PYTHON` | `python` | Python 解释器的**绝对路径**，例如 `C:/path/to/n8n-xhs-autopost/.venv/Scripts/python.exe`。相对路径以 n8n 进程的工作目录为基准，而不是 `BOT_DIR`；默认的 `python` 只有在 n8n 的 PATH 中能找到时才可用 |
 | `HEADLESS` | `false` | 是否无窗口运行浏览器。无头模式更容易被风控，建议先用 `false` |
 | `NOTION_DATABASE_ID` | — | Notion 数据库 ID |
 | `PERSONA` | 一个喜欢分享生活小技巧的普通上班族 | 账号人设，会写进 prompt |
 | `IMAGE_STYLE` | soft pastel flat illustration… | 配图风格（英文效果更好） |
-| `IMAGE_PROVIDER` | `gemini` | `gemini` 或 `pollinations` |
-| `POLLINATIONS_KEY` | 空 | 可选。填写后使用 `gen.pollinations.ai`，留空使用旧的匿名接口 |
+| `IMAGE_PROVIDER` | `gemini` | `gemini`、`pollinations`（旧的匿名接口 `image.pollinations.ai`，无需 key）或 `pollinations-key`（`gen.pollinations.ai`，需要凭据，见下文） |
 | `GEMINI_TEXT_MODEL` | `gemini-3.5-flash-lite` | 文案模型 |
 | `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-lite-image` | 配图模型（仅 `IMAGE_PROVIDER=gemini` 时使用） |
+
+### Pollinations key（可选）
+
+key 不写在 Config 或 URL 里，而是保存在 n8n 凭据中：
+
+1. 在 n8n 中新建一个 **Header Auth** 凭据：Name 填 `Authorization`，Value 填 `Bearer sk_...`（`Bearer` 后有一个空格）
+2. 在 **Pollinations Image (Key)** 节点中选择这个凭据
+3. 把 Config 中的 `IMAGE_PROVIDER` 改为 `pollinations-key`
+
+必须使用 `sk_` 开头的 secret key；`pk_` 开头的 publishable key 会返回 `401`（见 [Pollinations APIDOCS](https://github.com/pollinations/pollinations/blob/main/APIDOCS.md#-authentication)）。
 
 ## 单独使用发布脚本
 
@@ -155,6 +164,7 @@ python xhs_bot.py --mode publish_from_file --file examples/task.example.json
 | `--mode publish_from_file --file <path>` | 按任务文件发布 |
 | `--state <path>` | 登录态文件路径，默认为项目根目录下的 `xhs_state.json` |
 | `--headless` | 无窗口运行（仅发布模式） |
+| `--cleanup` | 全部发布成功后删除任务文件及其中的图片（workflow 默认使用；失败时保留，便于排查） |
 
 所有任务都发布成功时退出码为 `0`，否则为 `1`；失败时会在 `downloads/` 下保存截图。
 
@@ -164,7 +174,7 @@ python xhs_bot.py --mode publish_from_file --file examples/task.example.json
 查看 `Error` 字段中的原因，处理后把状态改回 `To Do`，下次运行会重新处理。
 
 **状态一直停在 `Generating`**
-说明 workflow 在出错处理之前就中断了（例如 n8n 被关闭，或者回写 Notion 本身失败）。到 n8n 的 Executions 里查看具体原因，然后把状态改回 `To Do`。
+说明 workflow 在出错处理之前就中断了（例如 n8n 被关闭，或者回写 Notion 本身失败）。到 n8n 的 Executions 里查看具体原因。如果 Publish 已经成功、只是 Mark Done 重试后仍然失败，笔记其实已经发出，把状态直接改成 `Done`；否则改回 `To Do`，以免重复发帖。
 
 **Error 显示 `Success message not detected`**
 点了发布按钮，但没有检测到「发布成功」提示。**先去创作者中心确认是否已经发出**，再决定要不要重试，以免重复发帖。
