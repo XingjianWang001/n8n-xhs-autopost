@@ -2,7 +2,7 @@
 
 Usage:
     python xhs_bot.py --mode login
-    python xhs_bot.py --mode publish_from_file --file xhs_task.json [--headless]
+    python xhs_bot.py --mode publish_from_file --file xhs_task.json [--headless] [--cleanup]
 
 Exit code is 0 only when every task was published successfully, so callers
 such as n8n's Execute Command node can detect failures.
@@ -88,6 +88,12 @@ def parse_tags(tags: str | list[str] | None) -> list[str]:
     return [t for t in tags.replace("#", " ").split() if t]
 
 
+def resolve_image_path(task: dict[str, Any]) -> Path:
+    """Relative image paths resolve from the project root."""
+    path = Path(task["image_path"])
+    return path if path.is_absolute() else SCRIPT_DIR / path
+
+
 def save_screenshot(page: Page) -> None:
     try:
         SCREENSHOT_DIR.mkdir(exist_ok=True)
@@ -101,9 +107,7 @@ def save_screenshot(page: Page) -> None:
 def publish_one(page: Page, task: dict[str, Any]) -> None:
     title = task["title"]
     content = task.get("content", "")
-    image_path = Path(task["image_path"])
-    if not image_path.is_absolute():
-        image_path = SCRIPT_DIR / image_path
+    image_path = resolve_image_path(task)
     tags = parse_tags(task.get("tags"))
 
     if not image_path.is_file():
@@ -220,6 +224,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Run the browser without a window when publishing",
     )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Delete the task file and its images once every task is published",
+    )
     args = parser.parse_args(argv)
 
     if args.mode == "login":
@@ -233,7 +242,15 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError) as e:
         log("ERROR", f"Invalid task file: {e}")
         return 1
-    return publish_all(tasks, args.state, args.headless)
+    code = publish_all(tasks, args.state, args.headless)
+    if code == 0 and args.cleanup:
+        for path in [args.file, *(resolve_image_path(t) for t in tasks)]:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as e:
+                # Already published: failing here would get the note posted again.
+                log("WARN", f"Could not delete {path}: {e}")
+    return code
 
 
 if __name__ == "__main__":

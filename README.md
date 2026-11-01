@@ -155,6 +155,7 @@ python xhs_bot.py --mode publish_from_file --file examples/task.example.json
 | `--mode publish_from_file --file <path>` | 按任务文件发布 |
 | `--state <path>` | 登录态文件路径，默认为项目根目录下的 `xhs_state.json` |
 | `--headless` | 无窗口运行（仅发布模式） |
+| `--cleanup` | 全部发布成功后删除任务文件及其中的图片（workflow 默认使用；失败时保留，便于排查） |
 
 所有任务都发布成功时退出码为 `0`，否则为 `1`；失败时会在 `downloads/` 下保存截图。
 

@@ -151,6 +151,7 @@ A task file holds one object or an array of them (published in order):
 | `--mode publish_from_file --file <path>` | Publish from a task file |
 | `--state <path>` | Session file, defaults to `xhs_state.json` in the project root |
 | `--headless` | Run without a window (publish mode only) |
+| `--cleanup` | Delete the task file and its images once every task is published (the workflow passes this; files are kept on failure for debugging) |
 
 Exit code is `0` only if every task was published; otherwise `1`, and a screenshot is saved under `downloads/`.
 
