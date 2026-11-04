@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -80,12 +81,12 @@ def load_tasks(path: Path) -> list[dict[str, Any]]:
 
 
 def parse_tags(tags: str | list[str] | None) -> list[str]:
-    """Accept '#a #b', 'a b' or ['a', '#b'] and return ['a', 'b']."""
+    """Accept '#a #b', 'a,b', 'a，b、c' or ['a', '#b'] and return ['a', 'b', ...]."""
     if not tags:
         return []
     if isinstance(tags, list):
         tags = " ".join(tags)
-    return [t for t in tags.replace("#", " ").split() if t]
+    return [t for t in re.split(r"[\s#,，、]+", tags) if t]
 
 
 def resolve_image_path(task: dict[str, Any]) -> Path:

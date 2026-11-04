@@ -30,7 +30,7 @@ flowchart LR
     K --> L[Build task file]
     L --> M[xhs_bot.py publish]
     M --> N[Mark Done]
-    D & E & F & G & I & J & K & L & M -.on error.-> X[Mark Failed + write Error]
+    E & F & G & I & J & K & L & M -.on error.-> X[Mark Failed + write Error]
 ```
 
 ## Project layout
