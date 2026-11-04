@@ -32,7 +32,7 @@ flowchart LR
     K --> L[生成任务文件]
     L --> M[xhs_bot.py 发布]
     M --> N[标记 Done]
-    D & E & F & G & I & J & K & L & M -.出错.-> X[标记 Failed + 写入 Error]
+    E & F & G & I & J & K & L & M -.出错.-> X[标记 Failed + 写入 Error]
 ```
 
 ## 项目结构
