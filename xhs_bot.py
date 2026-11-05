@@ -11,7 +11,9 @@ such as n8n's Execute Command node can detect failures.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
+import os
 import re
 import sys
 from datetime import datetime
@@ -31,6 +33,11 @@ LOGIN_TIMEOUT_MS = 60_000
 UPLOAD_TIMEOUT_MS = 30_000
 PUBLISH_TIMEOUT_MS = 15_000
 TAG_SUGGESTION_WAIT_MS = 2_000
+# The success toast, but not the note's own text in the editor, which may also say 发布成功.
+PUBLISHED_TOAST = (
+    "xpath=//*[text()[contains(., '发布成功')]"
+    " and not(ancestor-or-self::*[@contenteditable='true'])]"
+)
 
 
 class PublishError(Exception):
@@ -57,6 +64,7 @@ def login(state_file: Path) -> int:
             log("ERROR", "Login timed out.")
             return 1
         context.storage_state(path=str(state_file))
+        os.chmod(state_file, 0o600)  # holds live session cookies: owner-only, like a password file
         browser.close()
     log("SUCCESS", f"Login successful. Session saved to {state_file}")
     return 0
@@ -124,6 +132,8 @@ def publish_one(page: Page, task: dict[str, Any]) -> None:
 
     if not image_path.is_file():
         raise PublishError(f"Image file not found: {image_path}")
+    if image_path.stat().st_size == 0:
+        raise PublishError(f"Image file is empty (the provider returned no image): {image_path}")
 
     log("INFO", "Navigating to creator center...")
     page.goto(PUBLISH_URL)
@@ -178,7 +188,7 @@ def publish_one(page: Page, task: dict[str, Any]) -> None:
     log("INFO", "Clicking publish button...")
     page.locator("button").filter(has_text="发布").last.click()
     try:
-        page.wait_for_selector("text=发布成功", timeout=PUBLISH_TIMEOUT_MS)
+        page.wait_for_selector(PUBLISHED_TOAST, timeout=PUBLISH_TIMEOUT_MS)
     except PlaywrightTimeoutError as e:
         raise PublishError(
             "Success message not detected. Check the creator center before retrying "
@@ -186,8 +196,10 @@ def publish_one(page: Page, task: dict[str, Any]) -> None:
         ) from e
 
     log("SUCCESS", f"Published: {title}")
-    # Give the page a moment to finish any post-publish requests.
-    page.wait_for_timeout(3_000)
+    # Give the page a moment to finish any post-publish requests. It is already published, so a
+    # closed window here must not turn into a failure that invites a duplicate post.
+    with contextlib.suppress(PlaywrightError):
+        page.wait_for_timeout(3_000)
 
 
 def publish_all(tasks: list[dict[str, Any]], state_file: Path, headless: bool) -> int:
