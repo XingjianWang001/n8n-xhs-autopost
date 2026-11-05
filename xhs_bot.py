@@ -11,9 +11,7 @@ such as n8n's Execute Command node can detect failures.
 from __future__ import annotations
 
 import argparse
-import contextlib
 import json
-import os
 import re
 import sys
 from datetime import datetime
@@ -35,8 +33,8 @@ PUBLISH_TIMEOUT_MS = 15_000
 TAG_SUGGESTION_WAIT_MS = 2_000
 # The success toast, but not the note's own text in the editor, which may also say 发布成功.
 PUBLISHED_TOAST = (
-    "xpath=//*[text()[contains(., '发布成功')]"
-    " and not(ancestor-or-self::*[@contenteditable='true'])]"
+    "text=发布成功 >> xpath=self::*[not(ancestor-or-self::*"
+    "[@contenteditable and @contenteditable!='false'] or self::textarea)] >> visible=true"
 )
 
 
@@ -64,7 +62,7 @@ def login(state_file: Path) -> int:
             log("ERROR", "Login timed out.")
             return 1
         context.storage_state(path=str(state_file))
-        os.chmod(state_file, 0o600)  # holds live session cookies: owner-only, like a password file
+        state_file.chmod(0o600)  # live session cookies: owner-only, like a password file
         browser.close()
     log("SUCCESS", f"Login successful. Session saved to {state_file}")
     return 0
@@ -196,10 +194,11 @@ def publish_one(page: Page, task: dict[str, Any]) -> None:
         ) from e
 
     log("SUCCESS", f"Published: {title}")
-    # Give the page a moment to finish any post-publish requests. It is already published, so a
-    # closed window here must not turn into a failure that invites a duplicate post.
-    with contextlib.suppress(PlaywrightError):
+    # Give the page a moment to finish any post-publish requests.
+    try:
         page.wait_for_timeout(3_000)
+    except PlaywrightError as e:  # already published: a failure here would invite a duplicate post
+        log("WARN", f"Page closed right after publishing: {e}")
 
 
 def publish_all(tasks: list[dict[str, Any]], state_file: Path, headless: bool) -> int:
