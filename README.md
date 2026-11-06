@@ -31,7 +31,9 @@ flowchart LR
     J --> K
     K --> L[生成任务文件]
     L --> M[xhs_bot.py 发布]
-    M --> N[标记 Done]
+    M --> V{"输出里有 [SUCCESS]?"}
+    V -->|有| N[标记 Done]
+    V -->|没有| X
     E & F & G & I & J & K & L & M -.出错.-> X[标记 Failed + 写入 Error]
 ```
 
@@ -166,7 +168,7 @@ python xhs_bot.py --mode publish_from_file --file examples/task.example.json
 | `--headless` | 无窗口运行（仅发布模式） |
 | `--cleanup` | 全部发布成功后删除任务文件及其中的图片（workflow 默认使用；失败时保留，便于排查） |
 
-所有任务都发布成功时退出码为 `0`，否则为 `1`；失败时会在 `downloads/` 下保存截图。
+所有任务都发布成功时退出码为 `0`，否则为 `1`；失败时会在 `downloads/` 下保存截图。workflow 只在输出里有 `[SUCCESS] Published:` 时才标记 Done：进程被信号杀掉时 n8n 会把它当作成功（退出码按 0 算）。
 
 ## 常见问题
 
@@ -175,6 +177,9 @@ python xhs_bot.py --mode publish_from_file --file examples/task.example.json
 
 **状态一直停在 `Generating`**
 说明 workflow 在出错处理之前就中断了（例如 n8n 被关闭，或者回写 Notion 本身失败）。到 n8n 的 Executions 里查看具体原因。如果 Publish 已经成功、只是 Mark Done 重试后仍然失败，笔记其实已经发出，把状态直接改成 `Done`；否则改回 `To Do`，以免重复发帖。
+
+**Error 显示 `xhs_bot.py ended without reporting [SUCCESS]`**
+发布进程没有报告成功就结束了，通常是被中途停止（例如重启了 n8n 或服务器）。**先去创作者中心确认是否已经发出**：发出了就改成 `Done`，没有再改回 `To Do`。
 
 **Error 显示 `Success message not detected`**
 点了发布按钮，但没有检测到「发布成功」提示。**先去创作者中心确认是否已经发出**，再决定要不要重试，以免重复发帖。
