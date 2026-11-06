@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 pytest.importorskip("playwright")
@@ -25,6 +27,8 @@ def browser():
         try:
             browser = p.chromium.launch()
         except PlaywrightError:
+            if os.environ.get("CI"):  # CI installs Chromium; a skip there would hide these tests
+                raise
             pytest.skip("needs Chromium (run `playwright install chromium`)")
         yield browser
         browser.close()

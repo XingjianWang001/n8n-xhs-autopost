@@ -33,6 +33,7 @@ def steps():
 
 def test_every_step_that_can_fail_marks_the_row_failed():
     for name in steps():
+        assert not NODES[name].get("disabled"), name  # a disabled node passes its input straight on
         if NODES[name]["type"] not in ROUTERS:
             assert NODES[name].get("onError") == "continueErrorOutput", name
             assert outputs(name)[1] == ["Mark Failed"], name
@@ -40,6 +41,7 @@ def test_every_step_that_can_fail_marks_the_row_failed():
 
 # Exit code 0 is no proof of a post: n8n reports a command killed by a signal as a success.
 def test_only_the_bots_success_report_marks_the_row_done():
+    assert "Published?" in steps()  # reached through every step's success output
     assert inputs("Mark Done") == [("Published?", 0)]
     assert inputs("Published?") == [("Publish", 0)]
     assert outputs("Published?")[1] == ["Mark Failed"]
