@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 pytest.importorskip("playwright")
@@ -25,6 +27,8 @@ def browser():
         try:
             browser = p.chromium.launch()
         except PlaywrightError:
+            if os.environ.get("CI"):  # CI installs Chromium; a skip there would hide these tests
+                raise
             pytest.skip("needs Chromium (run `playwright install chromium`)")
         yield browser
         browser.close()
@@ -50,8 +54,11 @@ def publish(browser, tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("toast", ["发布成功", " 发布成功！", "<span>发布</span><span>成功</span>"])
-def test_success_toast_counts_as_published(publish, toast):
+def test_success_toast_counts_as_published(publish, toast, capsys):
     publish("今天学会了一个小技巧", toast)
+
+    # The workflow's Published? node marks the row Done only on this line.
+    assert "[SUCCESS] Published:" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("content", ["今天学会了一个小技巧", "第一次笔记发布成功的那天，我很开心"])

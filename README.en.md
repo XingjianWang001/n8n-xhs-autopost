@@ -29,7 +29,9 @@ flowchart LR
     J --> K
     K --> L[Build task file]
     L --> M[xhs_bot.py publish]
-    M --> N[Mark Done]
+    M --> V{"[SUCCESS] in output?"}
+    V -->|yes| N[Mark Done]
+    V -->|no| X
     E & F & G & I & J & K & L & M -.on error.-> X[Mark Failed + write Error]
 ```
 
@@ -162,7 +164,7 @@ A task file holds one object or an array of them (published in order):
 | `--headless` | Run without a window (publish mode only) |
 | `--cleanup` | Delete the task file and its images once every task is published (the workflow passes this; files are kept on failure for debugging) |
 
-Exit code is `0` only if every task was published; otherwise `1`, and a screenshot is saved under `downloads/`.
+Exit code is `0` only if every task was published; otherwise `1`, and a screenshot is saved under `downloads/`. The workflow marks a row Done only when the output contains `[SUCCESS] Published:`: n8n treats a process killed by a signal as a success (exit code 0).
 
 ## FAQ
 
@@ -171,6 +173,9 @@ Read the `Error` field, fix the cause, and set the status back to `To Do` to ret
 
 **The row is stuck at `Generating`**
 The run stopped before error handling could run (for example n8n was shut down, or writing to Notion itself failed). Check n8n's Executions list. If Publish succeeded and only Mark Done kept failing after its retries, the note is already live: set the status to `Done`. Otherwise set it back to `To Do`; this avoids a duplicate post.
+
+**Error says `xhs_bot.py ended without reporting [SUCCESS]`**
+The publisher ended without reporting success, usually because it was stopped midway (for example n8n or the server restarted). **Check the creator center first**: if the note is live, set the row to `Done`; otherwise set it back to `To Do`.
 
 **Error says `Success message not detected`**
 The publish button was clicked but the success toast never appeared. **Check the creator center first** to avoid a duplicate post before retrying.

@@ -486,6 +486,39 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d17c29cc-cb3f-41c6-ba97-69d92124470d",
+              "leftValue": "={{ $json.stdout }}",
+              "rightValue": "[SUCCESS] Published:",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "837743e4-e564-4727-8919-8239b88bdcad",
+      "name": "Published?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3100,
+        -80
+      ]
+    },
+    {
+      "parameters": {
         "resource": "databasePage",
         "operation": "update",
         "pageId": {
@@ -508,7 +541,7 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        3100,
+        3320,
         -80
       ],
       "retryOnFail": true,
@@ -532,7 +565,7 @@
             },
             {
               "key": "Error|rich_text",
-              "textContent": "={{ String($json.error?.message ?? $json.error ?? $json.stderr ?? 'Unknown error').slice(-1900) }}"
+              "textContent": "={{ String($json.error?.message || $json.error || ($json.exitCode === 0 ? ($json.stderr ? $json.stderr + '\\n' : '') + 'xhs_bot.py ended without reporting [SUCCESS] (stopped or killed?). Check the creator center before retrying.' : $json.stderr) || 'Unknown error').slice(-1900) }}"
             }
           ]
         },
@@ -543,7 +576,7 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 2.2,
       "position": [
-        3100,
+        3320,
         320
       ],
       "retryOnFail": true,
@@ -802,6 +835,24 @@
       ]
     },
     "Publish": {
+      "main": [
+        [
+          {
+            "node": "Published?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Published?": {
       "main": [
         [
           {
