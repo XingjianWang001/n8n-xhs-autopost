@@ -11,7 +11,7 @@
 - **Notion 作为内容队列**：`To Do → Generating → Done / Failed`，失败原因写入 `Error` 字段
 - **按风格写作**：根据选题的「风格」（科普 / 互动 / 干货 / 其他）自动切换文案结构，人设可配置
 - **两种配图来源**：Gemini 图像模型（稳定，按量计费）或 Pollinations（免费）
-- **完整的错误处理**：网络请求自动重试，任一步骤失败都会把 Notion 状态标为 `Failed` 并记录原因
+- **完整的错误处理**：网络请求自动重试，生成和发布中任一步骤失败都会把 Notion 状态标为 `Failed` 并记录原因（回写 Notion 本身失败时停在 `Generating`，见常见问题）
 - **发布脚本可单独使用**：`xhs_bot.py` 不依赖 n8n，给一个 JSON 就能发帖
 
 ## 工作流程
@@ -166,14 +166,14 @@ python xhs_bot.py --mode publish_from_file --file examples/task.example.json
 | `--mode publish_from_file --file <path>` | 按任务文件发布 |
 | `--state <path>` | 登录态文件路径，默认为项目根目录下的 `xhs_state.json` |
 | `--headless` | 无窗口运行（仅发布模式） |
-| `--cleanup` | 全部发布成功后删除任务文件及其中的图片（workflow 默认使用；失败时保留，便于排查） |
+| `--cleanup` | 全部发布成功后删除 workflow 生成的任务文件（`xhs_task_*`）和 `downloads/` 下的图片；你自己的任务文件和其他位置的图片不会删除（workflow 默认使用；失败时保留，便于排查） |
 
 所有任务都发布成功时退出码为 `0`，否则为 `1`；失败时会在 `downloads/` 下保存截图。workflow 只在输出里有 `[SUCCESS] Published:` 时才标记 Done：进程被信号杀掉时 n8n 会把它当作成功（退出码按 0 算）。
 
 ## 常见问题
 
 **Notion 状态变成了 `Failed`**
-查看 `Error` 字段中的原因，处理后把状态改回 `To Do`，下次运行会重新处理。
+查看 `Error` 字段中的原因，处理后把状态改回 `To Do`，下次运行会重新处理。如果 `Error` 末尾写着 `check the creator center before retrying`，说明失败发生在点击发布之后（包括发布进程在报告成功后被杀掉），**先去创作者中心确认是否已经发出**：发出了就改成 `Done`，以免重复发帖。
 
 **状态一直停在 `Generating`**
 说明 workflow 在出错处理之前就中断了（例如 n8n 被关闭，或者回写 Notion 本身失败）。到 n8n 的 Executions 里查看具体原因。如果 Publish 已经成功、只是 Mark Done 重试后仍然失败，笔记其实已经发出，把状态直接改成 `Done`；否则改回 `To Do`，以免重复发帖。

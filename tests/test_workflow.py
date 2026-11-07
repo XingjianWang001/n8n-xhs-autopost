@@ -1,5 +1,9 @@
 import json
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 WORKFLOW = json.loads(
     (Path(__file__).parent.parent / "workflows" / "xhs-auto-post.json").read_text(encoding="utf-8")
@@ -49,3 +53,35 @@ def test_only_the_bots_success_report_marks_the_row_done():
     assert condition["leftValue"] == "={{ $json.stdout }}"
     assert condition["operator"] == {"type": "string", "operation": "contains"}
     assert condition["rightValue"] == SUCCESS_REPORT
+
+
+def mark_failed_error(item, publish_ran):
+    """The Error Mark Failed writes for an incoming item, evaluated by node as n8n would."""
+    values = NODES["Mark Failed"]["parameters"]["propertiesUi"]["propertyValues"]
+    field = next(p for p in values if p["key"] == "Error|rich_text")
+    expression = field["textContent"].removeprefix("={{").removesuffix("}}")
+    node_ref = f"() => ({{isExecuted: {json.dumps(publish_ran)}}})"  # $('Publish').isExecuted
+    script = f"const $json = {json.dumps(item)}, $ = {node_ref}; process.stdout.write({expression})"
+    return subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout
+
+
+# A retry of a post that went out is a duplicate (#1, #5). Killing only python after
+# [SUCCESS] makes sh exit 137/143, which n8n routes to the error output without stdout.
+@pytest.mark.skipif(not shutil.which("node"), reason="needs node")
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"error": "[WARN] Tab switch failed\nKilled"},  # Publish error output: stderr only
+        {"error": "Command failed with exit code 143"},
+        {"exitCode": 0, "stdout": "", "stderr": ""},  # Published? false: n8n says exit 0
+    ],
+    ids=["sigkill", "sigterm", "no success report"],
+)
+def test_every_failure_after_publish_says_to_check_the_creator_center(item):
+    assert "check the creator center" in mark_failed_error(item, publish_ran=True)
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="needs node")
+def test_a_failure_before_publish_gives_its_own_reason():
+    error = mark_failed_error({"error": {"message": "quota exceeded"}}, publish_ran=False)
+    assert error == "quota exceeded"
