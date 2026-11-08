@@ -155,7 +155,7 @@
             },
             {
               "key": "Error|rich_text",
-              "textContent": ""
+              "textContent": "Run in progress. If this row stays in Generating, the run stopped midway and the note may already be live: check the creator center before retrying."
             }
           ]
         },
@@ -531,6 +531,10 @@
             {
               "key": "Status|status",
               "statusValue": "Done"
+            },
+            {
+              "key": "Error|rich_text",
+              "textContent": ""
             }
           ]
         },

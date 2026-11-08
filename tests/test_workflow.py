@@ -55,11 +55,22 @@ def test_only_the_bots_success_report_marks_the_row_done():
     assert condition["rightValue"] == SUCCESS_REPORT
 
 
+def notion_error(name):
+    """What a Notion node writes to the row's Error field (None if it leaves Error alone)."""
+    values = NODES[name]["parameters"]["propertiesUi"]["propertyValues"]
+    return next((p["textContent"] for p in values if p["key"] == "Error|rich_text"), None)
+
+
+# Stop, an execution timeout or a killed n8n ends the run inside Publish, before Mark Done or
+# Mark Failed: the row keeps what Mark Generating wrote, though the note may already be live.
+def test_a_row_left_in_generating_says_to_check_the_creator_center():
+    assert "check the creator center" in notion_error("Mark Generating")
+    assert notion_error("Mark Done") == ""  # a published row must not keep that warning
+
+
 def mark_failed_error(item, publish_ran):
     """The Error Mark Failed writes for an incoming item, evaluated by node as n8n would."""
-    values = NODES["Mark Failed"]["parameters"]["propertiesUi"]["propertyValues"]
-    field = next(p for p in values if p["key"] == "Error|rich_text")
-    expression = field["textContent"].removeprefix("={{").removesuffix("}}")
+    expression = notion_error("Mark Failed").removeprefix("={{").removesuffix("}}")
     node_ref = f"() => ({{isExecuted: {json.dumps(publish_ran)}}})"  # $('Publish').isExecuted
     script = f"const $json = {json.dumps(item)}, $ = {node_ref}; process.stdout.write({expression})"
     return subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout
