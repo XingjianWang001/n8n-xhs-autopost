@@ -96,3 +96,23 @@ def test_every_failure_after_publish_says_to_check_the_creator_center(item):
 def test_a_failure_before_publish_gives_its_own_reason():
     error = mark_failed_error({"error": {"message": "quota exceeded"}}, publish_ran=False)
     assert error == "quota exceeded"
+
+
+def parse_copy(model_output):
+    """Run the Parse Copy node's code on a Gemini reply, as n8n would."""
+    cfg = {"IMAGE_STYLE": "flat", "IMAGE_PROVIDER": "gemini"}
+    reply = {"candidates": [{"content": {"parts": [{"text": json.dumps(model_output)}]}}]}
+    stubs = f"const $ = () => ({{first: () => ({{json: {json.dumps(cfg)}}})}}), "
+    stubs += f"$input = {{first: () => ({{json: {json.dumps(reply)}}})}};"
+    code = NODES["Parse Copy"]["parameters"]["jsCode"]
+    script = f"{stubs} process.stdout.write(JSON.stringify((() => {{{code}}})()))"
+    return subprocess.run(["node", "-e", script], capture_output=True, text=True)
+
+
+# Xiaohongshu rejects a title over 20 characters only after the image is made and 发布 is clicked.
+@pytest.mark.skipif(not shutil.which("node"), reason="needs node")
+def test_a_title_over_20_characters_fails_before_publishing():
+    copy = {"title": "打工人必看！3个让下班后效率翻倍的小习惯✨", "content": "正文"}
+    assert "Title is 21 characters, Xiaohongshu allows at most 20" in parse_copy(copy).stderr
+    copy["title"] = "通勤路上的 3 个小习惯 ☕"  # examples/task.example.json
+    assert json.loads(parse_copy(copy).stdout)["json"]["title"] == copy["title"]
