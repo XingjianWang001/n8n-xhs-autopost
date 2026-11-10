@@ -116,3 +116,14 @@ def test_a_title_over_20_characters_fails_before_publishing():
     assert "Title is 21 characters, Xiaohongshu allows at most 20" in parse_copy(copy).stderr
     copy["title"] = "通勤路上的 3 个小习惯 ☕"  # examples/task.example.json
     assert json.loads(parse_copy(copy).stdout)["json"]["title"] == copy["title"]
+
+
+# The copy is checked as it will be published: a list or blank field from Gemini is no note.
+@pytest.mark.skipif(not shutil.which("node"), reason="needs node")
+def test_parse_copy_checks_the_copy_as_it_will_be_published():
+    copy = {"title": "通勤小习惯", "content": ["第一段", "第二段"], "tags": ["#通勤", "#效率"]}
+    out = json.loads(parse_copy(copy).stdout)["json"]
+    assert out["content"] == "第一段\n\n第二段"  # not "第一段,第二段"
+    assert out["tags"] == "#通勤 #效率"
+    for blank in ({"title": "  ", "content": "正文"}, {"title": "通勤小习惯", "content": " \n "}):
+        assert "Could not parse title/content" in parse_copy(blank).stderr
