@@ -176,7 +176,7 @@ python xhs_bot.py --mode publish_from_file --file examples/task.example.json
 查看 `Error` 字段中的原因，处理后把状态改回 `To Do`，下次运行会重新处理。如果 `Error` 末尾写着 `check the creator center before retrying`，说明失败发生在点击发布之后（包括发布进程在报告成功后被杀掉），**先去创作者中心确认是否已经发出**：发出了就改成 `Done`，以免重复发帖。
 
 **状态一直停在 `Generating`**
-说明 workflow 在出错处理之前就中断了（例如 n8n 被关闭，或者回写 Notion 本身失败）。到 n8n 的 Executions 里查看具体原因。如果 Publish 已经成功、只是 Mark Done 重试后仍然失败，笔记其实已经发出，把状态直接改成 `Done`；否则改回 `To Do`，以免重复发帖。
+说明 workflow 在出错处理之前就中断了（例如在 n8n 里点了停止、执行超时、n8n 被关闭，或者回写 Notion 本身失败）。中断时可能已经点了发布，Executions 里也不一定看得出来，所以 `Error` 里写着 `check the creator center before retrying`：**先去创作者中心确认是否已经发出**，发出了就改成 `Done`，没有再改回 `To Do`，以免重复发帖。
 
 **Error 显示 `xhs_bot.py ended without reporting [SUCCESS]`**
 发布进程没有报告成功就结束了，通常是被中途停止（例如重启了 n8n 或服务器）。**先去创作者中心确认是否已经发出**：发出了就改成 `Done`，没有再改回 `To Do`。
