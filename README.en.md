@@ -9,7 +9,7 @@ Write topics in Notion; n8n picks them up on a schedule, has Gemini write the co
 - **Notion as a content queue**: `To Do → Generating → Done / Failed`, with the failure reason written to an `Error` field
 - **Style-aware copywriting**: the prompt switches structure based on each topic's style (explainer / question / how-to / other); the persona is configurable
 - **Two image providers**: Gemini image models (reliable, paid per use) or Pollinations (free)
-- **Error handling**: network calls retry automatically; any failed step marks the Notion row `Failed` and records why
+- **Error handling**: network calls retry automatically; any failed generate or publish step marks the Notion row `Failed` and records why (if writing to Notion itself fails, the row stays at `Generating`; see the FAQ)
 - **Standalone publisher**: `xhs_bot.py` works without n8n — give it a JSON file and it posts
 
 ## Workflow
@@ -162,17 +162,17 @@ A task file holds one object or an array of them (published in order):
 | `--mode publish_from_file --file <path>` | Publish from a task file |
 | `--state <path>` | Session file, defaults to `xhs_state.json` in the project root |
 | `--headless` | Run without a window (publish mode only) |
-| `--cleanup` | Delete the task file and its images once every task is published (the workflow passes this; files are kept on failure for debugging) |
+| `--cleanup` | Once every task is published, delete the workflow's task file (`xhs_task_*`) and images under `downloads/`; your own task files and images elsewhere are never deleted (the workflow passes this; files are kept on failure for debugging) |
 
 Exit code is `0` only if every task was published; otherwise `1`, and a screenshot is saved under `downloads/`. The workflow marks a row Done only when the output contains `[SUCCESS] Published:`: n8n treats a process killed by a signal as a success (exit code 0).
 
 ## FAQ
 
 **The Notion row is `Failed`**
-Read the `Error` field, fix the cause, and set the status back to `To Do` to retry.
+Read the `Error` field, fix the cause, and set the status back to `To Do` to retry. If the `Error` ends with `check the creator center before retrying`, the failure came after the publish click (including the publisher being killed after it reported success): **check the creator center first**, and if the note is live set the row to `Done` to avoid a duplicate post.
 
 **The row is stuck at `Generating`**
-The run stopped before error handling could run (for example n8n was shut down, or writing to Notion itself failed). Check n8n's Executions list. If Publish succeeded and only Mark Done kept failing after its retries, the note is already live: set the status to `Done`. Otherwise set it back to `To Do`; this avoids a duplicate post.
+The run stopped before error handling could run (for example someone stopped it in n8n, it hit the execution timeout, n8n was shut down, or writing to Notion itself failed). The publish button may already have been clicked, and the Executions list may not show it, so the `Error` field says `check the creator center before retrying`: **check the creator center first**; if the note is live set the row to `Done`, otherwise set it back to `To Do`. This avoids a duplicate post.
 
 **Error says `xhs_bot.py ended without reporting [SUCCESS]`**
 The publisher ended without reporting success, usually because it was stopped midway (for example n8n or the server restarted). **Check the creator center first**: if the note is live, set the row to `Done`; otherwise set it back to `To Do`.

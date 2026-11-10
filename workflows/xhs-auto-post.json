@@ -155,7 +155,7 @@
             },
             {
               "key": "Error|rich_text",
-              "textContent": ""
+              "textContent": "Run in progress. If this row stays in Generating, the run stopped midway and the note may already be live: check the creator center before retrying."
             }
           ]
         },
@@ -531,6 +531,10 @@
             {
               "key": "Status|status",
               "statusValue": "Done"
+            },
+            {
+              "key": "Error|rich_text",
+              "textContent": ""
             }
           ]
         },
@@ -565,7 +569,7 @@
             },
             {
               "key": "Error|rich_text",
-              "textContent": "={{ String($json.error?.message || $json.error || ($json.exitCode === 0 ? ($json.stderr ? $json.stderr + '\\n' : '') + 'xhs_bot.py ended without reporting [SUCCESS] (stopped or killed?). Check the creator center before retrying.' : $json.stderr) || 'Unknown error').slice(-1900) }}"
+              "textContent": "={{ (String($json.error?.message || $json.error || ($json.exitCode === 0 ? ($json.stderr ? $json.stderr + '\\n' : '') + 'xhs_bot.py ended without reporting [SUCCESS] (stopped or killed?).' : $json.stderr) || 'Unknown error') + ($('Publish').isExecuted ? '\\nThe note may already be live: check the creator center before retrying.' : '')).slice(-1900) }}"
             }
           ]
         },
